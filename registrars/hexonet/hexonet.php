@@ -6,18 +6,18 @@
  * @author HEXONET GmbH <support@hexonet.net>
  */
 
-define("ISPAPI_MODULE_VERSION", "4.4.2");
+define("HEXONET_MODULE_VERSION", "4.4.2");
 
 if (!defined("WHMCS")) {
     die("This file cannot be accessed directly");
 }
 
 use Illuminate\Database\Capsule\Manager as DB;
-use WHMCS\Module\Registrar\Ispapi\Ispapi as Ispapi;
-use WHMCS\Module\Registrar\Ispapi\Helper as Helper;
-use WHMCS\Module\Registrar\Ispapi\WebApps as WebApps;
-use WHMCS\Module\Registrar\Ispapi\DomainTransfer as HXDomainTransfer;
-use WHMCS\Module\Registrar\Ispapi\Domain as HXDomain;
+use WHMCS\Module\Registrar\Hexonet\Ispapi as Ispapi;
+use WHMCS\Module\Registrar\Hexonet\Helper as Helper;
+use WHMCS\Module\Registrar\Hexonet\WebApps as WebApps;
+use WHMCS\Module\Registrar\Hexonet\DomainTransfer as HXDomainTransfer;
+use WHMCS\Module\Registrar\Hexonet\Domain as HXDomain;
 
 /**
  * Check the availability of domains using HEXONET's fast API
@@ -33,7 +33,7 @@ use WHMCS\Module\Registrar\Ispapi\Domain as HXDomain;
  * @see https://confluence.hexonet.net/pages/viewpage.action?pageId=8589377 for diagram
  * @throws \Exception in case of an error
  */
-function ispapi_CheckAvailability($params)
+function hexonet_CheckAvailability($params)
 {
     $maxGroupSize = 25;
     $premiumEnabled = (bool) $params["premiumEnabled"];
@@ -94,7 +94,7 @@ function ispapi_CheckAvailability($params)
                     } elseif (!empty($r["PROPERTY"]["PREMIUMCHANNEL"][$idx])) {// CASE: PREMIUM
                         $params["AvailabilityCheckResult"] = $r;
                         $params["AvailabilityCheckResultIndex"] = $idx;
-                        $prices = ispapi_GetPremiumPrice($params);
+                        $prices = hexonet_GetPremiumPrice($params);
                         $sr->setPremiumDomain(true);
                         $sr->setPremiumCostPricing($prices);
                         if (empty($prices)) {
@@ -138,7 +138,7 @@ function ispapi_CheckAvailability($params)
  *
  * @return \WHMCS\Domains\DomainLookup\ResultsList An ArrayObject based collection of \WHMCS\Domains\DomainLookup\SearchResult results
  */
-function ispapi_GetDomainSuggestions($params)
+function hexonet_GetDomainSuggestions($params)
 {
     // go through configuration settings
     if (empty($params["suggestionSettings"]["suggestions"])) {
@@ -187,7 +187,7 @@ function ispapi_GetDomainSuggestions($params)
         }
         // check the availability, as also taken/reserved/blocked domains could be returned
         $params["suggestions"] = array_values(array_unique(array_filter($r["PROPERTY"]["DOMAIN"])));
-        $tmp = ispapi_CheckAvailability($params);
+        $tmp = hexonet_CheckAvailability($params);
         // add entries to the list of entries to return
         $resultsCount = count($results);
         $resultsFilled = $resultsCount >= $suggestionsLimit;
@@ -209,7 +209,7 @@ function ispapi_GetDomainSuggestions($params)
  *
  * @param array an array with different settings
  */
-function ispapi_DomainSuggestionOptions($params)
+function hexonet_DomainSuggestionOptions($params)
 {
     $version = implode(".", array_slice(explode(".", $params["whmcsVersion"]), 0, 2));
     if (version_compare($version, "7.6") === -1) {
@@ -309,7 +309,7 @@ function ispapi_DomainSuggestionOptions($params)
  * );
  * @throws Exception in case currency configuration is missing
  */
-function ispapi_GetPremiumPrice($params)
+function hexonet_GetPremiumPrice($params)
 {
     if (isset($params["AvailabilityCheckResult"])) {
         $index = $params["AvailabilityCheckResultIndex"];
@@ -345,17 +345,17 @@ function ispapi_GetPremiumPrice($params)
         }
         // probably registration case (domain name available), API provides PRICE/CURRENCY Properties
         // get registration price (as of variable fee premiums calculation is more complex)
-        $renewprice = ispapi_getPremiumRenewPrice($params, $r["CLASS"][$index], $currency->id);
+        $renewprice = hexonet_getPremiumRenewPrice($params, $r["CLASS"][$index], $currency->id);
         if ($renewprice !== false) {
             $prices["renew"] = $renewprice;
         }
-        $registerprice = ispapi_getPremiumRegisterPrice($params, $r["CLASS"][$index], $r["PRICE"][$index], $currency->id);
+        $registerprice = hexonet_getPremiumRegisterPrice($params, $r["CLASS"][$index], $r["PRICE"][$index], $currency->id);
         if ($registerprice !== false) {
             $prices["register"] = $registerprice;
         }
     } else {
         $prices = [
-            "CurrencyCode" =>  ispapi_getPremiumCurrency($params, $r["CLASS"][$index])
+            "CurrencyCode" =>  hexonet_getPremiumCurrency($params, $r["CLASS"][$index])
         ];
         if ($prices["CurrencyCode"] === false) {
             $racc = Ispapi::call([ // worst case fallback
@@ -372,11 +372,11 @@ function ispapi_GetPremiumPrice($params)
             throw new Exception("Missing currency configuration for: " . $prices["CurrencyCode"]);
         }
         // probably transfer case (domain name n/a), API doesn't provide PRICE/CURRENCY Properties
-        $renewprice = ispapi_getPremiumRenewPrice($params, $r["CLASS"][$index], $currency->id);
+        $renewprice = hexonet_getPremiumRenewPrice($params, $r["CLASS"][$index], $currency->id);
         if ($renewprice !== false) {
             $prices["renew"] = $renewprice;
         }
-        $transferprice = ispapi_getPremiumTransferPrice($params, $r["CLASS"][$index], $currency->id);
+        $transferprice = hexonet_getPremiumTransferPrice($params, $r["CLASS"][$index], $currency->id);
         if ($transferprice !== false) {
             $prices["transfer"] = $transferprice;
         }
@@ -390,11 +390,11 @@ function ispapi_GetPremiumPrice($params)
  * @param string $class the class of the domain name
  * @return string/bool the premium currency, false if not found
  */
-function ispapi_getPremiumCurrency($params, $class)
+function hexonet_getPremiumCurrency($params, $class)
 {
     if (!preg_match("/\:/", $class)) {
         //REGISTRY PREMIUM DOMAIN (e.g. PREMIUM_DATE_F)
-        return  ispapi_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $class . "_CURRENCY");
+        return  hexonet_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $class . "_CURRENCY");
     }
     //VARIABLE FEE PREMIUM DOMAINS (e.g. PREMIUM_TOP_CNY:24:2976)
     return preg_replace("/(^.+_|:.+$)", "", $class);
@@ -410,7 +410,7 @@ function ispapi_getPremiumCurrency($params, $class)
  *
  * @return integer/bool the renew price, false if not found
  */
-function ispapi_getPremiumRegisterPrice($params, $class, $registerprice, $cur_id)
+function hexonet_getPremiumRegisterPrice($params, $class, $registerprice, $cur_id)
 {
     if (!preg_match("/\:/", $class)) {
         //REGISTRY PREMIUM DOMAIN (e.g. PREMIUM_DATE_F)
@@ -419,10 +419,10 @@ function ispapi_getPremiumRegisterPrice($params, $class, $registerprice, $cur_id
     //VARIABLE FEE PREMIUM DOMAINS (e.g. PREMIUM_TOP_CNY:24:2976)
     $p = preg_split("/\:/", $class);
     $cl = preg_split("/_/", $p[0]);
-    $premiummarkupfix_value = ispapi_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_SETUP_MARKUP_FIX");
-    $premiummarkupvar_value = ispapi_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_SETUP_MARKUP_VAR");
+    $premiummarkupfix_value = hexonet_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_SETUP_MARKUP_FIX");
+    $premiummarkupvar_value = hexonet_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_SETUP_MARKUP_VAR");
     if ($premiummarkupfix_value && $premiummarkupvar_value) {
-        $currency = ispapi_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_CURRENCY");
+        $currency = hexonet_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_CURRENCY");
         if ($currency !== false) {
             $currency = \WHMCS\Billing\Currency::where("code", $prices["CurrencyCode"])->first();
             if (!$currency) {
@@ -447,11 +447,11 @@ function ispapi_getPremiumRegisterPrice($params, $class, $registerprice, $cur_id
  *
  * @return integer/bool the premium transfer price, false if not found
  */
-function ispapi_getPremiumTransferPrice($params, $class, $cur_id)
+function hexonet_getPremiumTransferPrice($params, $class, $cur_id)
 {
     if (!preg_match("/\:/", $class)) {
         //REGISTRY PREMIUM DOMAIN (e.g. PREMIUM_DATE_F)
-        $currency = ispapi_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $class . "_CURRENCY");
+        $currency = hexonet_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $class . "_CURRENCY");
         if ($currency === false) {
             return false;
         }
@@ -459,7 +459,7 @@ function ispapi_getPremiumTransferPrice($params, $class, $cur_id)
         if (!$currency) {
             return false;
         }
-        $transfer = ispapi_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $class . "_TRANSFER");
+        $transfer = hexonet_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $class . "_TRANSFER");
         // premium period is in general 1Y, no need to reflect period in calculations
         if ($transfer !== false && ($currency->id != $cur_id)) {
             return convertCurrency($transfer, $currency->id, $cur_id);
@@ -469,10 +469,10 @@ function ispapi_getPremiumTransferPrice($params, $class, $cur_id)
     //VARIABLE FEE PREMIUM DOMAINS (e.g. PREMIUM_TOP_CNY:24:2976)
     $p = preg_split("/\:/", $class);
     $cl = preg_split("/_/", $p[0]);
-    $premiummarkupfix_value = ispapi_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_TRANSFER_MARKUP_FIX");
-    $premiummarkupvar_value = ispapi_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_TRANSFER_MARKUP_VAR");
+    $premiummarkupfix_value = hexonet_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_TRANSFER_MARKUP_FIX");
+    $premiummarkupvar_value = hexonet_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_TRANSFER_MARKUP_VAR");
     if ($premiummarkupfix_value && $premiummarkupvar_value) {
-        $currency = ispapi_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_CURRENCY");
+        $currency = hexonet_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_CURRENCY");
         if ($currency !== false) {
             $currency = \WHMCS\Billing\Currency::where("code", $currency)->first();
             if (!$currency) {
@@ -497,11 +497,11 @@ function ispapi_getPremiumTransferPrice($params, $class, $cur_id)
  *
  * @return integer/bool the premium renew price, false if not found
  */
-function ispapi_getPremiumRenewPrice($params, $class, $cur_id)
+function hexonet_getPremiumRenewPrice($params, $class, $cur_id)
 {
     if (!preg_match("/\:/", $class)) {
         //REGISTRY PREMIUM DOMAIN (e.g. PREMIUM_DATE_F)
-        $currency = ispapi_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $class . "_CURRENCY");
+        $currency = hexonet_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $class . "_CURRENCY");
         if ($currency === false) {
             return false;
         }
@@ -509,7 +509,7 @@ function ispapi_getPremiumRenewPrice($params, $class, $cur_id)
         if (!$currency) {
             return false;
         }
-        $renewprice = ispapi_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $class . "_ANNUAL");
+        $renewprice = hexonet_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $class . "_ANNUAL");
         if ($renewprice && ($currency->id != $cur_id)) {
             $renewprice = convertCurrency($renewprice, $cur_id2->id, $cur_id);
         }
@@ -518,10 +518,10 @@ function ispapi_getPremiumRenewPrice($params, $class, $cur_id)
     //VARIABLE FEE PREMIUM DOMAINS (e.g. PREMIUM_TOP_CNY:24:2976)
     $p = preg_split("/\:/", $class);
     $cl = preg_split("/_/", $p[0]);
-    $premiummarkupfix_value = ispapi_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_ANNUAL_MARKUP_FIX");
-    $premiummarkupvar_value = ispapi_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_ANNUAL_MARKUP_VAR");
+    $premiummarkupfix_value = hexonet_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_ANNUAL_MARKUP_FIX");
+    $premiummarkupvar_value = hexonet_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_ANNUAL_MARKUP_VAR");
     if ($premiummarkupfix_value && $premiummarkupvar_value) {
-        $currency = ispapi_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_CURRENCY");
+        $currency = hexonet_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $cl[0] . "_" . $cl[1] . "_*_CURRENCY");
         if ($currency !== false) {
             $currency = \WHMCS\Billing\Currency::where("code", $currency)->first();
             if (!$currency) {
@@ -547,7 +547,7 @@ function ispapi_getPremiumRenewPrice($params, $class, $cur_id)
  *
  * @return integer/bool the renew price, false if not found
  */
-function ispapi_getRenewPrice($params, $class, $cur_id, $tld)
+function hexonet_getRenewPrice($params, $class, $cur_id, $tld)
 {
     if (empty($class)) {
         //NO PREMIUM RENEW, RETURN THE PRICE SET IN WHMCS
@@ -565,7 +565,7 @@ function ispapi_getRenewPrice($params, $class, $cur_id, $tld)
         //return !empty($renewprice) ? $renewprice : false;
     }
 
-    return ispapi_getPremiumRenewPrice($params, $class, $cur_id);
+    return hexonet_getPremiumRenewPrice($params, $class, $cur_id);
 }
 
 /**
@@ -576,9 +576,9 @@ function ispapi_getRenewPrice($params, $class, $cur_id, $tld)
  *
  * @return integer/bool the user relationvalue, false if not found
  */
-function ispapi_getUserRelationValue($params, $relationtype)
+function hexonet_getUserRelationValue($params, $relationtype)
 {
-    $relations = ispapi_getUserRelations($params);
+    $relations = hexonet_getUserRelations($params);
     $i = 0;
     foreach ($relations["RELATIONTYPE"] as $relation) {
         if ($relation == $relationtype) {
@@ -597,7 +597,7 @@ function ispapi_getUserRelationValue($params, $relationtype)
  *
  * @return array/bool the user relations, false if not found
  */
-function ispapi_getUserRelations($params)
+function hexonet_getUserRelations($params)
 {
     if (session_status() == PHP_SESSION_NONE) {
         session_start();
@@ -625,31 +625,16 @@ function ispapi_getUserRelations($params)
  *
  * @return array $configarray configuration array of the module
  */
-function ispapi_getConfigArray($params)
+function hexonet_getConfigArray($params)
 {
-    $oldModule = "hexonet";
-    $newModule = "ispapi";
-    if (@$_GET['migrate']) {
-        DB::table("tbldomains")->where("registrar", $oldModule)->update(["registrar" => $newModule]);
-        DB::table("tbldomainpricing")->where("autoreg", $oldModule)->update(["autoreg" => $newModule]);
-        DB::table("tblregistrars")->where("registrar", $oldModule)->delete();
-    }
-    $migrate = (
-        DB::table("tbldomains")->where("registrar", $oldModule)->count() > 0
-        || DB::table("tbldomainpricing")->where("autoreg", $oldModule)->count() > 0
-    );
-    
     $configarray = [
         "FriendlyName" => [
             "Type" => "System",
-            "Value" => "ISPAPI v" . ISPAPI_MODULE_VERSION
+            "Value" => "HEXONET v" . HEXONET_MODULE_VERSION
         ],
         "Description" => [
             "Type" => "System",
-            "Value" => (
-                "<a target=\"_blank\" href=\"https://www.hexonet.net\">HEXONET</a>'s official maintained white-label ISPAPI Registrar Module." .
-                ($migrate ? "<br /><a href=\"configregistrars.php?migrate=true&amp;saved=true\" class=\"btn btn-sm btn-default\" title=\"Click here to automatically migrate domains and TLD pricings related to Hexonet to this module!\">Migrate from HEXONET module</a>" : "")
-            )
+            "Value" => "<a target=\"_blank\" href=\"https://www.hexonet.net\">HEXONET</a>'s official maintained white-label ISPAPI Registrar Module."
         ],
         "Username" => [
             "Type" => "text",
@@ -732,7 +717,7 @@ function ispapi_getConfigArray($params)
 
             if (!$included) {
                 $included = true;
-                $values = WHMCS\Module\Registrar\Ispapi\Ispapi::getStatisticsData($params);
+                $values = WHMCS\Module\Registrar\Hexonet\Ispapi::getStatisticsData($params);
 
                 $command = array(
                         "COMMAND" => "SetEnvironment",
@@ -761,7 +746,7 @@ function ispapi_getConfigArray($params)
  *
  * @return array an array with a template name
  */
-function ispapi_ClientArea($params)
+function hexonet_ClientArea($params)
 {
     global $smarty;
 
@@ -798,7 +783,7 @@ function ispapi_ClientArea($params)
  *
  * @return array $buttonarray an array custum buttons
  */
-function ispapi_ClientAreaCustomButtonArray($params)
+function hexonet_ClientAreaCustomButtonArray($params)
 {
     $params = injectDomainObjectIfNecessary($params);
     $buttonarray = [];
@@ -850,7 +835,7 @@ function ispapi_ClientAreaCustomButtonArray($params)
  *
  * @return array an array with a template name
  */
-function ispapi_webapps($params)
+function hexonet_webapps($params)
 {
     return WebApps::getPage($params);
 }
@@ -862,7 +847,7 @@ function ispapi_webapps($params)
  *
  * @return array an array with a template name
  */
-function ispapi_dnssec($params)
+function hexonet_dnssec($params)
 {
     $origparams = $params;
 
@@ -996,7 +981,7 @@ function ispapi_dnssec($params)
  *
  * @return array an array with a template name and some variables
  */
-function ispapi_registrantmodification_it($params)
+function hexonet_registrantmodification_it($params)
 {
     global $additionaldomainfields;
 
@@ -1016,12 +1001,12 @@ function ispapi_registrantmodification_it($params)
     $response = Ispapi::call($command, $params);
 
     if ($response["CODE"] == 200) {
-        $values["Registrant"] = ispapi_get_contact_info($response["PROPERTY"]["OWNERCONTACT"][0], $params);
+        $values["Registrant"] = hexonet_get_contact_info($response["PROPERTY"]["OWNERCONTACT"][0], $params);
     }
 
     //handle additionaldomainfields
     //------------------------------------------------------------------------------
-    ispapi_include_additionaladditionalfields();
+    hexonet_include_additionaladditionalfields();
 
     $myadditionalfields = array();
     if (is_array($additionaldomainfields) && isset($additionaldomainfields["." . $params["tld"]])) {
@@ -1097,7 +1082,7 @@ function ispapi_registrantmodification_it($params)
             $params["additionalfields"]["Section 5 Agreement"] = "1";
             $params["additionalfields"]["Section 6 Agreement"] = "1";
             $params["additionalfields"]["Section 7 Agreement"] = "1";
-            ispapi_use_additionalfields($params, $command);
+            hexonet_use_additionalfields($params, $command);
             $response = Ispapi::call($command, $origparams);
 
             if ($response["CODE"] == 200) {
@@ -1126,7 +1111,7 @@ function ispapi_registrantmodification_it($params)
  *
  * @return array an array with a template name and some variables
  */
-function ispapi_registrantmodification_tld($params)
+function hexonet_registrantmodification_tld($params)
 {
     global $additionaldomainfields;
 
@@ -1147,12 +1132,12 @@ function ispapi_registrantmodification_tld($params)
     $response = Ispapi::call($command, $params);
 
     if ($response["CODE"] == 200) {
-        $values["Registrant"] = ispapi_get_contact_info($response["PROPERTY"]["OWNERCONTACT"][0], $params);
+        $values["Registrant"] = hexonet_get_contact_info($response["PROPERTY"]["OWNERCONTACT"][0], $params);
     }
 
     //handle additionaldomainfields
     //------------------------------------------------------------------------------
-    ispapi_include_additionaladditionalfields();
+    hexonet_include_additionaladditionalfields();
 
     $myadditionalfields = array();
     if (is_array($additionaldomainfields) && isset($additionaldomainfields["." . $params["tld"]])) {
@@ -1220,7 +1205,7 @@ function ispapi_registrantmodification_tld($params)
             }
             if (!$error) {
                 $params["additionalfields"] = $_POST["additionalfields"];
-                ispapi_use_additionalfields($params, $command);
+                hexonet_use_additionalfields($params, $command);
                 $response = Ispapi::call($command, $origparams);
 
                 if ($response["CODE"] == 200) {
@@ -1249,7 +1234,7 @@ function ispapi_registrantmodification_tld($params)
  *
  * @return array an array with a template name and some variables
  */
-function ispapi_registrantmodification_ca($params)
+function hexonet_registrantmodification_ca($params)
 {
     global $additionaldomainfields;
 
@@ -1265,7 +1250,7 @@ function ispapi_registrantmodification_ca($params)
 
     //handle additionaldomainfields
     //------------------------------------------------------------------------------
-    ispapi_include_additionaladditionalfields();
+    hexonet_include_additionaladditionalfields();
 
     $myadditionalfields = array();
     if (is_array($additionaldomainfields) && isset($additionaldomainfields["." . $params["tld"]])) {
@@ -1306,13 +1291,13 @@ function ispapi_registrantmodification_ca($params)
     $response = Ispapi::call($command, $params);
 
     if ($response["CODE"] == 200) {
-        $values["Registrant"] = ispapi_get_contact_info($response["PROPERTY"]["OWNERCONTACT"][0], $params);
+        $values["Registrant"] = hexonet_get_contact_info($response["PROPERTY"]["OWNERCONTACT"][0], $params);
 
         foreach ($myadditionalfields as $item) {
             if ($item["Ispapi-Name"] == "X-CA-LEGALTYPE") {
-                $ispapi_options = explode(",", $item["Ispapi-Options"]);
+                $hexonet_options = explode(",", $item["Ispapi-Options"]);
                 $options = explode(",", $item["Options"]);
-                $index = array_search($response["PROPERTY"]["X-CA-LEGALTYPE"][0], $ispapi_options);
+                $index = array_search($response["PROPERTY"]["X-CA-LEGALTYPE"][0], $hexonet_options);
                 $values["Legal Type"] = $options[$index];
             }
         }
@@ -1354,7 +1339,7 @@ function ispapi_registrantmodification_ca($params)
         $params["additionalfields"]["Legal Type"] = $_POST["additionalfields"]["Legal Type"];
         $params["additionalfields"]["WHOIS Opt-out"] = $_POST["additionalfields"]["WHOIS Opt-out"];
 
-        ispapi_use_additionalfields($params, $command);
+        hexonet_use_additionalfields($params, $command);
 
         $response = Ispapi::call($command, $origparams);
 
@@ -1392,7 +1377,7 @@ function ispapi_registrantmodification_ca($params)
  *
  * @return array an array with a template name and some variables
  */
-function ispapi_whoisprivacy($params)
+function hexonet_whoisprivacy($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -1447,7 +1432,7 @@ function ispapi_whoisprivacy($params)
  *
  * @return array an array with a template name and some variables
  */
-function ispapi_whoisprivacy_ca($params)
+function hexonet_whoisprivacy_ca($params)
 {
     if (isset($params["original"])) {
         $params = $params["original"];
@@ -1504,7 +1489,7 @@ function ispapi_whoisprivacy_ca($params)
  *
  * @return array $values - an array with transferlock setting information
  */
-function ispapi_GetRegistrarLock($params)
+function hexonet_GetRegistrarLock($params)
 {
     ;
     $values = array();
@@ -1542,7 +1527,7 @@ function ispapi_GetRegistrarLock($params)
  *
  * @return array $values - returns an array with command response description
  */
-function ispapi_SaveRegistrarLock($params)
+function hexonet_SaveRegistrarLock($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -1569,7 +1554,7 @@ function ispapi_SaveRegistrarLock($params)
  *
  * @return array $values - returns true
  */
-function ispapi_IsAffectedByIRTP($domain, $params)
+function hexonet_IsAffectedByIRTP($domain, $params)
 {
     $command = array(
         "COMMAND" => "QueryDomainOptions",
@@ -1586,11 +1571,11 @@ function ispapi_IsAffectedByIRTP($domain, $params)
  *
  * @return array $values - returns true
  */
-function ispapi_GetDomainInformation($params)
+function hexonet_GetDomainInformation($params)
 {
     $values = array();
     $origparams = $params;
-    $params = ispapi_get_utf8_params($params);
+    $params = hexonet_get_utf8_params($params);
     $domain = $params["sld"] . "." . $params["tld"];
 
     $command = array(
@@ -1623,7 +1608,7 @@ function ispapi_GetDomainInformation($params)
     }
 
     //IRTP handling
-    $isAfectedByIRTP = ispapi_IsAffectedByIRTP($domain, $params);
+    $isAfectedByIRTP = hexonet_IsAffectedByIRTP($domain, $params);
     if (preg_match('/Designated Agent/', $params['IRTP']) && $isAfectedByIRTP) {
         //setIsIrtpEnabled
         $values['setIsIrtpEnabled'] = true;
@@ -1684,7 +1669,7 @@ function ispapi_GetDomainInformation($params)
  *
  * @return array returns success or error
  */
-function ispapi_ResendIRTPVerificationEmail($params)
+function hexonet_ResendIRTPVerificationEmail($params)
 {
     //perform API call to initiate resending of the IRTP Verification Email
     $success = true;
@@ -1711,7 +1696,7 @@ function ispapi_ResendIRTPVerificationEmail($params)
  *
  * @return array $values an array with the authcode
  */
-function ispapi_GetEPPCode($params)
+function hexonet_GetEPPCode($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -1761,7 +1746,7 @@ function ispapi_GetEPPCode($params)
  *
  * @return array $values an array with the Nameservers
  */
-function ispapi_GetNameservers($params)
+function hexonet_GetNameservers($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -1794,7 +1779,7 @@ function ispapi_GetNameservers($params)
  *
  * @return array $values - returns an array with command response description
  */
-function ispapi_SaveNameservers($params)
+function hexonet_SaveNameservers($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -1825,7 +1810,7 @@ function ispapi_SaveNameservers($params)
  *
  * @return array $hostrecords - an array with hostrecord of the domain name
  */
-function ispapi_GetDNS($params)
+function hexonet_GetDNS($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -1949,7 +1934,7 @@ function ispapi_GetDNS($params)
  *
  * @return array $hostrecords - an array with hostrecord of the domain name
  */
-function ispapi_SaveDNS($params)
+function hexonet_SaveDNS($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -2109,7 +2094,7 @@ function ispapi_SaveDNS($params)
  *
  * @return array $result - returns an array with command response description
  */
-function ispapi_GetEmailForwarding($params)
+function hexonet_GetEmailForwarding($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -2159,7 +2144,7 @@ function ispapi_GetEmailForwarding($params)
  *
  * @return array $values - returns an array with command response description
  */
-function ispapi_SaveEmailForwarding($params)
+function hexonet_SaveEmailForwarding($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -2225,7 +2210,7 @@ function ispapi_SaveEmailForwarding($params)
  *
  * @return array $values - an array with different contact values.
  */
-function ispapi_GetContactDetails($params)
+function hexonet_GetContactDetails($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -2241,10 +2226,10 @@ function ispapi_GetContactDetails($params)
     $response = Ispapi::call($command, $params);
 
     if ($response["CODE"] == 200) {
-        $values["Registrant"] = ispapi_get_contact_info($response["PROPERTY"]["OWNERCONTACT"][0], $params);
-        $values["Admin"] = ispapi_get_contact_info($response["PROPERTY"]["ADMINCONTACT"][0], $params);
-        $values["Technical"] = ispapi_get_contact_info($response["PROPERTY"]["TECHCONTACT"][0], $params);
-        $values["Billing"] = ispapi_get_contact_info($response["PROPERTY"]["BILLINGCONTACT"][0], $params);
+        $values["Registrant"] = hexonet_get_contact_info($response["PROPERTY"]["OWNERCONTACT"][0], $params);
+        $values["Admin"] = hexonet_get_contact_info($response["PROPERTY"]["ADMINCONTACT"][0], $params);
+        $values["Technical"] = hexonet_get_contact_info($response["PROPERTY"]["TECHCONTACT"][0], $params);
+        $values["Billing"] = hexonet_get_contact_info($response["PROPERTY"]["BILLINGCONTACT"][0], $params);
         if (preg_match('/\.(ca|it|ch|li|se|sg)$/i', $domain)) {
             unset($values["Registrant"]["First Name"]);
             unset($values["Registrant"]["Last Name"]);
@@ -2261,7 +2246,7 @@ function ispapi_GetContactDetails($params)
  *
  * @return array $values - an array with command response description
  */
-function ispapi_SaveContactDetails($params)
+function hexonet_SaveContactDetails($params)
 {
     if (!function_exists("convertStateToCode")) {
         require implode(DIRECTORY_SEPARATOR, [ROOTDIR, "include", "clientfunctions.php"]);
@@ -2271,7 +2256,7 @@ function ispapi_SaveContactDetails($params)
     // JIRA #HM-709
     // WHMCS #YOV-471189 (unconfirmed)
     $origparams = $params;
-    $params = ispapi_get_utf8_params($params);
+    $params = hexonet_get_utf8_params($params);
     //--------------- EXCEPTION [END] -----------
 
     $params = injectDomainObjectIfNecessary($params);
@@ -2289,9 +2274,9 @@ function ispapi_SaveContactDetails($params)
             "error" => $status_response["DESCRIPTION"]
         ];
     }
-    $isAfectedByIRTP = ispapi_IsAffectedByIRTP($domain, $params);
+    $isAfectedByIRTP = hexonet_IsAffectedByIRTP($domain, $params);
 
-    $registrant = ispapi_get_contact_info($status_response["PROPERTY"]["OWNERCONTACT"][0], $params);
+    $registrant = hexonet_get_contact_info($status_response["PROPERTY"]["OWNERCONTACT"][0], $params);
     if (isset($origparams["contactdetails"]["Registrant"])) {
         $new_registrant = $origparams["contactdetails"]["Registrant"];
     }
@@ -2315,8 +2300,8 @@ function ispapi_SaveContactDetails($params)
         );
 
         //some of the AFNIC TLDs(.fr, .pm, .re) require local presence. eg: "X-FR-ACCEPT-TRUSTEE-TAC" => 1
-        ispapi_query_additionalfields($params);
-        ispapi_use_additionalfields($params, $command);
+        hexonet_query_additionalfields($params);
+        hexonet_use_additionalfields($params, $command);
 
         //opt-out is not supported for AFNIC TLDs (eg: .FR)
         $queryDomainOptions_response = Ispapi::call([
@@ -2401,7 +2386,7 @@ function ispapi_SaveContactDetails($params)
             ];
         }
 
-        $registrant = ispapi_get_contact_info($status_response["PROPERTY"]["OWNERCONTACT"][0], $params);
+        $registrant = hexonet_get_contact_info($status_response["PROPERTY"]["OWNERCONTACT"][0], $params);
         $command["OWNERCONTACT0"]["FIRSTNAME"] = $registrant["First Name"];
         $command["OWNERCONTACT0"]["LASTNAME"] = $registrant["Last Name"];
         $command["OWNERCONTACT0"]["ORGANIZATION"] = $registrant["Company Name"];
@@ -2437,8 +2422,8 @@ function ispapi_SaveContactDetails($params)
             unset($command["OWNERCONTACT0"]);
         }
 
-        ispapi_query_additionalfields($params);
-        ispapi_use_additionalfields($params, $command);
+        hexonet_query_additionalfields($params);
+        hexonet_use_additionalfields($params, $command);
     }
 
     $response = Ispapi::call($command, $origparams);
@@ -2459,7 +2444,7 @@ function ispapi_SaveContactDetails($params)
  *
  * @return array $values - an array with command response description
  */
-function ispapi_RegisterNameserver($params)
+function hexonet_RegisterNameserver($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -2486,7 +2471,7 @@ function ispapi_RegisterNameserver($params)
  *
  * @return array $values - an array with command response description
  */
-function ispapi_ModifyNameserver($params)
+function hexonet_ModifyNameserver($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -2514,7 +2499,7 @@ function ispapi_ModifyNameserver($params)
  *
  * @return array $values - an array with command response description
  */
-function ispapi_DeleteNameserver($params)
+function hexonet_DeleteNameserver($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -2540,7 +2525,7 @@ function ispapi_DeleteNameserver($params)
  *
  * @return array
  */
-function ispapi_IDProtectToggle($params)
+function hexonet_IDProtectToggle($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -2567,7 +2552,7 @@ function ispapi_IDProtectToggle($params)
  *
  * @return array $values - an array with command response description
  */
-function ispapi_RegisterDomain($params)
+function hexonet_RegisterDomain($params)
 {
     global $additionaldomainfields;
 
@@ -2577,7 +2562,7 @@ function ispapi_RegisterDomain($params)
     $premiumDomainsEnabled = (bool) $params['premiumEnabled'];
     $premiumDomainsCost = $params['premiumCost'];
 
-    $params = ispapi_get_utf8_params($params);
+    $params = hexonet_get_utf8_params($params);
 
     $domain = $params["sld"] . "." . $params["tld"];
 
@@ -2649,7 +2634,7 @@ function ispapi_RegisterDomain($params)
         unset($command["TRANSFERLOCK"]);
     }
 
-    ispapi_use_additionalfields($params, $command);
+    hexonet_use_additionalfields($params, $command);
 
     //#####################################################################
     //##################### PREMIUM DOMAIN HANDLING #######################
@@ -2706,7 +2691,7 @@ function ispapi_RegisterDomain($params)
  *
  * @return array $values - an array with command response description
  */
-function ispapi_TransferDomain($params)
+function hexonet_TransferDomain($params)
 {
     $params = injectDomainObjectIfNecessary($params);
     /** @var \WHMCS\Domains\Domain $domain */
@@ -2836,7 +2821,7 @@ function ispapi_TransferDomain($params)
         //checkdomaintransfer
         if ($r["CODE"] == 200 && !empty($r['PROPERTY']['CLASS'][0])) {
             //check if the price displayed to the customer is equal to the real cost at the registar
-            $price = ispapi_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $r['PROPERTY']['CLASS'][0] . "_TRANSFER");
+            $price = hexonet_getUserRelationValue($params, "PRICE_CLASS_DOMAIN_" . $r['PROPERTY']['CLASS'][0] . "_TRANSFER");
             if ($price !== false && $premiumDomainsCost == $price) {
                 $command["CLASS"] = $r['PROPERTY']['CLASS'][0];
             } else {
@@ -2848,7 +2833,7 @@ function ispapi_TransferDomain($params)
     }
     //#####################################################################
     if (preg_match("/\.ca$/", $domain->getDomain())) {
-        ispapi_use_additionalfields($params, $command);
+        hexonet_use_additionalfields($params, $command);
         unset($command["X-CA-DISCLOSE"]);//not supported for transfers
     }
     $response = Ispapi::call($command, $params);
@@ -2870,7 +2855,7 @@ function ispapi_TransferDomain($params)
  *
  * @return array $values - an array with command response description
  */
-function ispapi_RenewDomain($params)
+function hexonet_RenewDomain($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -2928,7 +2913,7 @@ function ispapi_RenewDomain($params)
  *
  * @return array $values - an array with command response description
  */
-function ispapi_ReleaseDomain($params)
+function hexonet_ReleaseDomain($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -2960,7 +2945,7 @@ function ispapi_ReleaseDomain($params)
  *
  * @return array $values - an array with command response description
  */
-function ispapi_RequestDelete($params)
+function hexonet_RequestDelete($params)
 {
     $values = array();
     if (isset($params["original"])) {
@@ -2992,7 +2977,7 @@ function ispapi_RequestDelete($params)
  *
  * @return array
  */
-function ispapi_TransferSync($params)
+function hexonet_TransferSync($params)
 {
     $params = injectDomainObjectIfNecessary($params);
     /** @var \WHMCS\Domains\Domain $domain */
@@ -3078,7 +3063,7 @@ function ispapi_TransferSync($params)
  *
  * @return array
  */
-function ispapi_Sync($params)
+function hexonet_Sync($params)
 {
     $params = injectDomainObjectIfNecessary($params);
     /** @var \WHMCS\Domains\Domain $domain */
@@ -3258,10 +3243,10 @@ function ispapi_Sync($params)
  *
  * @return \WHMCS\Results\ResultsList
  */
-function ispapi_getTLDPricing($params)
+function hexonet_getTLDPricing($params)
 {
     // fetch list of tlds offerable by reseller
-    $tlds = WHMCS\Module\Registrar\Ispapi\Ispapi::getTLDs($params);
+    $tlds = WHMCS\Module\Registrar\Hexonet\Ispapi::getTLDs($params);
     if (isset($tlds["error"])) {
         return $tlds;
     }
@@ -3270,13 +3255,13 @@ function ispapi_getTLDPricing($params)
     }
 
     // fetch tld configurations for offerable tlds
-    $cfgs = WHMCS\Module\Registrar\Ispapi\Ispapi::getTLDConfigurations($tlds, $params);
+    $cfgs = WHMCS\Module\Registrar\Hexonet\Ispapi::getTLDConfigurations($tlds, $params);
     if (isset($cfgs["error"])) {
         return $cfgs;
     }
 
     // fetch prices for offerable tlds
-    $prices = WHMCS\Module\Registrar\Ispapi\Ispapi::getTLDPrices(array_flip($tlds), $cfgs);
+    $prices = WHMCS\Module\Registrar\Hexonet\Ispapi::getTLDPrices(array_flip($tlds), $cfgs);
     if (isset($prices["error"])) {
         return $prices;
     }
@@ -3319,7 +3304,7 @@ function ispapi_getTLDPricing($params)
  *
  * @return array $values - an array with contact information
  */
-function ispapi_get_contact_info($contact, &$params)
+function hexonet_get_contact_info($contact, &$params)
 {
     if (isset($params["_contact_hash"][$contact])) {
         return $params["_contact_hash"][$contact];
@@ -3372,7 +3357,7 @@ function ispapi_get_contact_info($contact, &$params)
 // ------- Helper functions and functions required to connect the API ----------
 // ------------------------------------------------------------------------------
 
-function ispapi_query_additionalfields(&$params)
+function hexonet_query_additionalfields(&$params)
 {
     $data = [
         ":domainid" => $params["domainid"]
@@ -3390,7 +3375,7 @@ function ispapi_query_additionalfields(&$params)
  * More information here: https://docs.whmcs.com/Additional_Domain_Fields
  *
  */
-function ispapi_include_additionaladditionalfields()
+function hexonet_include_additionaladditionalfields()
 {
     global $additionaldomainfields;
 
@@ -3406,11 +3391,11 @@ function ispapi_include_additionaladditionalfields()
     }
 }
 
-function ispapi_use_additionalfields($params, &$command)
+function hexonet_use_additionalfields($params, &$command)
 {
     global $additionaldomainfields;
 
-    ispapi_include_additionaladditionalfields();
+    hexonet_include_additionaladditionalfields();
 
     $myadditionalfields = array();
     if (is_array($additionaldomainfields) && isset($additionaldomainfields["." . $params["tld"]])) {
@@ -3465,7 +3450,7 @@ function ispapi_use_additionalfields($params, &$command)
     }
 }
 
-function ispapi_get_utf8_params($params)
+function hexonet_get_utf8_params($params)
 {
     if (isset($params["original"])) {
         return $params["original"];
