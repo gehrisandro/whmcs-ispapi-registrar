@@ -134,3 +134,5 @@ add_hook('ClientAreaPageDomainDetails', 1, function ($vars) {
         return $vars;
     }
 });
+
+include "hooks_migration.php";

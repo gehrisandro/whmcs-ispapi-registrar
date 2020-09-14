@@ -66,7 +66,7 @@ function hexonet_CheckAvailability($params)
     // chunk the check list, only ~250 are allowed at once
     $results = new \WHMCS\Domains\DomainLookup\ResultsList();
     foreach (array_chunk($tocheck, $maxGroupSize) as $command["DOMAIN"]) {
-        $r = Ispapi::call($command, $params);
+        $r = Ispapi::call($command, $params, 'hexonet');
         foreach ($command["DOMAIN"] as $idx => $domain) {
             $parts = preg_split("/\./", $domain, 2);
             $sr = new \WHMCS\Domains\DomainLookup\SearchResult($parts[0], $parts[1]);
@@ -181,7 +181,7 @@ function hexonet_GetDomainSuggestions($params)
     do {
         // get domain name suggestions
         $command["FIRST"] = $first;
-        $r = Ispapi::call($command, $params);
+        $r = Ispapi::call($command, $params, 'hexonet');
         if ($r["CODE"] != 200 || empty($r["PROPERTY"]["DOMAIN"])) {
             break;//leave while and return $results
         }
@@ -221,7 +221,7 @@ function hexonet_DomainSuggestionOptions($params)
     /*$r = Ispapi::call([
         "COMMAND" => "QueryDomainSuggestionList",
         "SOURCE" => "ISPAPI-CATEGORIES"
-    ], $params);
+    ], $params, 'hexonet');
     $categories = ["" => "Not set (default)"];
     if ($r["CODE"] != "200") {
         $r["PROPERTY"]["CATEGORY"] = [ // 06-08-2020
@@ -324,7 +324,7 @@ function hexonet_GetPremiumPrice($params)
             "COMMAND" => "CheckDomains",
             "DOMAIN0" => $params["domain"],
             "PREMIUMCHANNELS" => "*"
-        ], $params);
+        ], $params, 'hexonet');
     }
     if (
         ($r["CODE"] != 200) ||
@@ -360,7 +360,7 @@ function hexonet_GetPremiumPrice($params)
         if ($prices["CurrencyCode"] === false) {
             $racc = Ispapi::call([ // worst case fallback
                 "COMMAND" => "StatusAccount"
-            ], $params);
+            ], $params, 'hexonet');
             if ($racc["CODE"] != "200" || empty($racc["PROPERTY"]["CURRENCY"][0])) {
                 return [];
             }
@@ -606,7 +606,7 @@ function hexonet_getUserRelations($params)
     $date = new DateTime();
     if ((!isset($_SESSION["ISPAPICACHE"])) || ($_SESSION["ISPAPICACHE"]["TIMESTAMP"] + 600 < $date->getTimestamp() )) {
         $command["COMMAND"] = "StatusUser";
-        $response = Ispapi::call($command, $params);
+        $response = Ispapi::call($command, $params, 'hexonet');
         if ($response["CODE"] == 200) {
             $_SESSION["ISPAPICACHE"] = array("TIMESTAMP" => $date->getTimestamp() , "RELATIONS" => $response["PROPERTY"]);
             return $_SESSION["ISPAPICACHE"]["RELATIONS"];
@@ -690,7 +690,7 @@ function hexonet_getConfigArray($params)
             "COMMAND" => "CheckAuthentication",
             "SUBUSER" => $params["Username"],
             "PASSWORD" => $params["Password"]
-        ], $params);
+        ], $params, 'hexonet');
 
         $mode_text = ($params["TestMode"] == "on") ? "to OT&E environment" : "to PRODUCTION environment";
         if ($response["CODE"] == 200) {
@@ -729,7 +729,7 @@ function hexonet_getConfigArray($params)
                     $command["ENVIRONMENTVALUE$i"] = $value;
                     $i++;
                 }
-                Ispapi::call($command, $params);
+                Ispapi::call($command, $params, 'hexonet');
             }
         }
     }
@@ -765,7 +765,7 @@ function hexonet_ClientArea($params)
             $response = Ispapi::call([
                 "COMMAND" => "StatusDomain",
                 "DOMAIN" => $domain
-            ], $params);
+            ], $params, 'hexonet');
             if ($response["CODE"] == 200) {
                 $smarty->assign("statusdomain", $response["PROPERTY"]);
             }
@@ -891,7 +891,7 @@ function hexonet_dnssec($params)
                     "COMMAND" => "StatusDomain",
                     "DOMAIN" => $domain
             );
-            $response = Ispapi::call($command2, $params);
+            $response = Ispapi::call($command2, $params, 'hexonet');
             if ($response["CODE"] == 200) {
                     $secdnsds = (isset($response["PROPERTY"]["SECDNS-DS"])) ? $response["PROPERTY"]["SECDNS-DS"] : array();
             }
@@ -916,7 +916,7 @@ function hexonet_dnssec($params)
                 }
             }
         }
-        $response = Ispapi::call($command, $params);
+        $response = Ispapi::call($command, $params, 'hexonet');
         if ($response["CODE"] == 200) {
             $successful = $response["DESCRIPTION"];
         } else {
@@ -931,7 +931,7 @@ function hexonet_dnssec($params)
             "COMMAND" => "StatusDomain",
             "DOMAIN" => $domain
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     if ($response["CODE"] == 200) {
             $maxsiglife = (isset($response["PROPERTY"]["SECDNS-MAXSIGLIFE"])) ? $response["PROPERTY"]["SECDNS-MAXSIGLIFE"][0] : "";
@@ -998,7 +998,7 @@ function hexonet_registrantmodification_it($params)
             "COMMAND" => "StatusDomain",
             "DOMAIN" => $domain
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     if ($response["CODE"] == 200) {
         $values["Registrant"] = hexonet_get_contact_info($response["PROPERTY"]["OWNERCONTACT"][0], $params);
@@ -1083,7 +1083,7 @@ function hexonet_registrantmodification_it($params)
             $params["additionalfields"]["Section 6 Agreement"] = "1";
             $params["additionalfields"]["Section 7 Agreement"] = "1";
             hexonet_use_additionalfields($params, $command);
-            $response = Ispapi::call($command, $origparams);
+            $response = Ispapi::call($command, $origparams, 'hexonet');
 
             if ($response["CODE"] == 200) {
                 $successful = $response["DESCRIPTION"];
@@ -1129,7 +1129,7 @@ function hexonet_registrantmodification_tld($params)
             "COMMAND" => "StatusDomain",
             "DOMAIN" => $domain
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     if ($response["CODE"] == 200) {
         $values["Registrant"] = hexonet_get_contact_info($response["PROPERTY"]["OWNERCONTACT"][0], $params);
@@ -1206,7 +1206,7 @@ function hexonet_registrantmodification_tld($params)
             if (!$error) {
                 $params["additionalfields"] = $_POST["additionalfields"];
                 hexonet_use_additionalfields($params, $command);
-                $response = Ispapi::call($command, $origparams);
+                $response = Ispapi::call($command, $origparams, 'hexonet');
 
                 if ($response["CODE"] == 200) {
                     $successful = $response["DESCRIPTION"];
@@ -1288,7 +1288,7 @@ function hexonet_registrantmodification_ca($params)
             "COMMAND" => "StatusDomain",
             "DOMAIN" => $domain
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     if ($response["CODE"] == 200) {
         $values["Registrant"] = hexonet_get_contact_info($response["PROPERTY"]["OWNERCONTACT"][0], $params);
@@ -1341,7 +1341,7 @@ function hexonet_registrantmodification_ca($params)
 
         hexonet_use_additionalfields($params, $command);
 
-        $response = Ispapi::call($command, $origparams);
+        $response = Ispapi::call($command, $origparams, 'hexonet');
 
         if ($response["CODE"] == 200) {
             $successful = $response["DESCRIPTION"];
@@ -1392,7 +1392,7 @@ function hexonet_whoisprivacy($params)
             "DOMAIN" => $domain,
             "X-ACCEPT-WHOISTRUSTEE-TAC" => ($_REQUEST["idprotection"] == 'enable') ? '1' : '0'
         );
-        $response = Ispapi::call($command, $params);
+        $response = Ispapi::call($command, $params, 'hexonet');
         if ($response["CODE"] == 200) {
             return false;
         } else {
@@ -1405,7 +1405,7 @@ function hexonet_whoisprivacy($params)
         "DOMAIN" => $domain
     );
     $protected = 0;
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
     if ($response["CODE"] == 200) {
         if (isset($response["PROPERTY"]["X-ACCEPT-WHOISTRUSTEE-TAC"])) {
             if ($response["PROPERTY"]["X-ACCEPT-WHOISTRUSTEE-TAC"][0]) {
@@ -1446,7 +1446,7 @@ function hexonet_whoisprivacy_ca($params)
     $r = Ispapi::call(array(
         "COMMAND" => "StatusDomain",
         "DOMAIN" => $domain
-    ), $apicfg);
+    ), $apicfg, 'hexonet');
     if ($r["CODE"] == 200) {
         $protected = (isset($r["PROPERTY"]["X-CA-DISCLOSE"]) && $r["PROPERTY"]["X-CA-DISCLOSE"][0]) ? 0 : 1;//inverse logic???
         $registrant = $r["PROPERTY"]["OWNERCONTACT"][0];
@@ -1464,7 +1464,7 @@ function hexonet_whoisprivacy_ca($params)
             "COMMAND" => "ModifyDomain",
             "DOMAIN" => $domain,
             "X-CA-DISCLOSE" => ($_REQUEST["idprotection"] == 'enable') ? '0' : '1'//inverse logic???
-        ), $apicfg);
+        ), $apicfg, 'hexonet');
         if ($r["CODE"] == 200) {
             return false;
         } else {
@@ -1503,7 +1503,7 @@ function hexonet_GetRegistrarLock($params)
         "DOMAIN" => $domain
     );
 
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     if ($response["CODE"] == 200) {
         if (isset($response["PROPERTY"]["TRANSFERLOCK"])) {
@@ -1539,7 +1539,7 @@ function hexonet_SaveRegistrarLock($params)
         "DOMAIN" => $domain,
         "TRANSFERLOCK" => ($params["lockenabled"] == "locked") ? "1" : "0"
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
     if ($response["CODE"] != 200) {
         $values["error"] = $response["DESCRIPTION"];
     }
@@ -1560,7 +1560,7 @@ function hexonet_IsAffectedByIRTP($domain, $params)
         "COMMAND" => "QueryDomainOptions",
         "DOMAIN0" => $domain
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     return ($response['PROPERTY']['ZONEPOLICYREGISTRANTNAMECHANGEBY'] && $response['PROPERTY']['ZONEPOLICYREGISTRANTNAMECHANGEBY'][0] === 'ICANN-TRADE');
 }
@@ -1582,7 +1582,7 @@ function hexonet_GetDomainInformation($params)
         "COMMAND" => "StatusDomain",
         "DOMAIN" => $domain
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     if ($response["CODE"] == 200) {
         //setIrtpTransferLock
@@ -1618,14 +1618,14 @@ function hexonet_GetDomainInformation($params)
             "COMMAND" => "StatusDomainTrade",
             "DOMAIN" => $domain
         );
-        $statusDomainTrade_response = Ispapi::call($command, $params);
+        $statusDomainTrade_response = Ispapi::call($command, $params, 'hexonet');
 
         //setDomainContactChangePending
         $command = array(
             "COMMAND" => "QueryDomainPendingRegistrantVerificationList",
             "DOMAIN" => $domain
         );
-        $response = Ispapi::call($command, $params);
+        $response = Ispapi::call($command, $params, 'hexonet');
         if ($response["CODE"] == 200) {
             if ($statusDomainTrade_response["CODE"] == 200) {
                 if (isset($response["PROPERTY"]["X-REGISTRANT-VERIFICATION-STATUS"]) && ($response["PROPERTY"]["X-REGISTRANT-VERIFICATION-STATUS"][0] == 'PENDING' || $response["PROPERTY"]["X-REGISTRANT-VERIFICATION-STATUS"][0] == 'OVERDUE')) {
@@ -1679,7 +1679,7 @@ function hexonet_ResendIRTPVerificationEmail($params)
         "COMMAND" => "ResendDomainTransferConfirmationEmails",
         "DOMAIN" => $domain
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
     
     if ($response["CODE"] == 200) {
         return ['success' => true];
@@ -1709,7 +1709,7 @@ function hexonet_GetEPPCode($params)
             "COMMAND" => "DENIC_CreateAuthInfo1",
             "DOMAIN" => $domain
         );
-        $response = Ispapi::call($command, $params);
+        $response = Ispapi::call($command, $params, 'hexonet');
     }
 
     if ($params["tld"] == "eu") {
@@ -1717,13 +1717,13 @@ function hexonet_GetEPPCode($params)
             "COMMAND" => "RequestDomainAuthInfo",
             "DOMAIN" => $domain
         );
-        $response = Ispapi::call($command, $params);
+        $response = Ispapi::call($command, $params, 'hexonet');
     } else {
         $command = array(
             "COMMAND" => "StatusDomain",
             "DOMAIN" => $domain
         );
-        $response = Ispapi::call($command, $params);
+        $response = Ispapi::call($command, $params, 'hexonet');
     }
 
     if ($response["CODE"] == 200) {
@@ -1758,7 +1758,7 @@ function hexonet_GetNameservers($params)
         "COMMAND" => "StatusDomain",
         "DOMAIN" => $domain
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
     if ($response["CODE"] == 200) {
         //no findings for htmlspecialchars in other registrar modules, looks like this got fixed
         $values["ns1"] = $response["PROPERTY"]["NAMESERVER"][0];
@@ -1793,7 +1793,7 @@ function hexonet_SaveNameservers($params)
         "NAMESERVER" => array($params["ns1"], $params["ns2"], $params["ns3"], $params["ns4"], $params["ns5"]),
         "INTERNALDNS" => 1
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
     if ($response["CODE"] != 200) {
         $values["error"] = $response["DESCRIPTION"];
         if ($response["CODE"] == 504 && preg_match("/TOO FEW.+CONTACTS/", $values["error"])) {
@@ -1824,7 +1824,7 @@ function hexonet_GetDNS($params)
             "COMMAND" => "ConvertIDN",
             "DOMAIN" => $domain
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
     $dnszone_idn = $response["PROPERTY"]["ACE"][0] . ".";
 
     $command = array(
@@ -1832,7 +1832,7 @@ function hexonet_GetDNS($params)
             "DNSZONE" => $dnszone,
             "EXTENDED" => 1
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
     $hostrecords = array();
     if ($response["CODE"] == 200) {
         $i = 0;
@@ -1902,7 +1902,7 @@ function hexonet_GetDNS($params)
                 "DNSZONE" => $dnszone,
                 "SHORT" => 1,
         );
-        $response = Ispapi::call($command, $params);
+        $response = Ispapi::call($command, $params, 'hexonet');
         if ($response["CODE"] == 200) {
             foreach ($response["PROPERTY"]["RR"] as $rr) {
                 $fields = explode(" ", $rr);
@@ -2040,7 +2040,7 @@ function hexonet_SaveDNS($params)
             "DNSZONE" => $dnszone,
             "EXTENDED" => 1
     );
-    $response = Ispapi::call($command2, $params);
+    $response = Ispapi::call($command2, $params, 'hexonet');
 
     if ($response["CODE"] == 200) {
         foreach ($response["PROPERTY"]["RR"] as $rr) {
@@ -2065,7 +2065,7 @@ function hexonet_SaveDNS($params)
     }
 
     //send command to update DNS Zone
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     //if DNS Zone not existing, create one automatically
     if ($response["CODE"] == 545) {
@@ -2074,10 +2074,10 @@ function hexonet_SaveDNS($params)
             "DOMAIN" => $domain,
             "INTERNALDNS" => 1
         );
-        $creatednszone = Ispapi::call($creatednszone_command, $params);
+        $creatednszone = Ispapi::call($creatednszone_command, $params, 'hexonet');
         if ($creatednszone["CODE"] == 200) {
             //resend command to update DNS Zone
-            $response = Ispapi::call($command, $params);
+            $response = Ispapi::call($command, $params, 'hexonet');
         }
     }
 
@@ -2108,7 +2108,7 @@ function hexonet_GetEmailForwarding($params)
         "SHORT" => 1,
         "EXTENDED" => 1
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     $result = array();
 
@@ -2195,7 +2195,7 @@ function hexonet_SaveEmailForwarding($params)
         }
     }
 
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     if ($response["CODE"] != 200) {
         $values["error"] = $response["DESCRIPTION"];
@@ -2223,7 +2223,7 @@ function hexonet_GetContactDetails($params)
         "COMMAND" => "StatusDomain",
         "DOMAIN" => $domain
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     if ($response["CODE"] == 200) {
         $values["Registrant"] = hexonet_get_contact_info($response["PROPERTY"]["OWNERCONTACT"][0], $params);
@@ -2268,7 +2268,7 @@ function hexonet_SaveContactDetails($params)
     $status_response = Ispapi::call([
         "COMMAND" => "StatusDomain",
         "DOMAIN" => $domain
-    ], $origparams);
+    ], $origparams, 'hexonet');
     if ($status_response["CODE"] != 200) {
         return [
             "error" => $status_response["DESCRIPTION"]
@@ -2307,7 +2307,7 @@ function hexonet_SaveContactDetails($params)
         $queryDomainOptions_response = Ispapi::call([
             "COMMAND" => "QueryDomainOptions",
             "DOMAIN0" => $domain
-        ], $origparams);
+        ], $origparams, 'hexonet');
         //AFNIC TLDs => pm, tf, wf, yt, fr, re
         if (!preg_match("/AFNIC/i", $queryDomainOptions_response["PROPERTY"]["REPOSITORY"][0])) {
             if ($origparams["irtpOptOut"]) { //HM-735
@@ -2378,7 +2378,7 @@ function hexonet_SaveContactDetails($params)
             "COMMAND" => "StatusDomain",
             "DOMAIN" => $domain
         );
-        $status_response = Ispapi::call($status_command, $origparams);
+        $status_response = Ispapi::call($status_command, $origparams, 'hexonet');
 
         if ($status_response["CODE"] != 200) {
             return [
@@ -2399,7 +2399,7 @@ function hexonet_SaveContactDetails($params)
             "COMMAND" => "StatusDomain",
             "DOMAIN" => $domain
         );
-        $status_response = Ispapi::call($status_command, $origparams);
+        $status_response = Ispapi::call($status_command, $origparams, 'hexonet');
 
         if ($status_response["CODE"] != 200) {
             $values["error"] = $status_response["DESCRIPTION"];
@@ -2413,7 +2413,7 @@ function hexonet_SaveContactDetails($params)
             unset($registrant_command["FIRSTNAME"]);
             unset($registrant_command["LASTNAME"]);
             unset($registrant_command["ORGANIZATION"]);
-            $registrant_response = Ispapi::call($registrant_command, $origparams);
+            $registrant_response = Ispapi::call($registrant_command, $origparams, 'hexonet');
 
             if ($registrant_response["CODE"] != 200) {
                 $values["error"] = $registrant_response["DESCRIPTION"];
@@ -2426,7 +2426,7 @@ function hexonet_SaveContactDetails($params)
         hexonet_use_additionalfields($params, $command);
     }
 
-    $response = Ispapi::call($command, $origparams);
+    $response = Ispapi::call($command, $origparams, 'hexonet');
     
     if ($response["CODE"] != 200) {
         return [
@@ -2457,7 +2457,7 @@ function hexonet_RegisterNameserver($params)
         "NAMESERVER" => $nameserver,
         "IPADDRESS0" => $params["ipaddress"],
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
     if ($response["CODE"] != 200) {
         $values["error"] = $response["DESCRIPTION"];
     }
@@ -2485,7 +2485,7 @@ function hexonet_ModifyNameserver($params)
         "DELIPADDRESS0" => $params["currentipaddress"],
         "ADDIPADDRESS0" => $params["newipaddress"],
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
     if ($response["CODE"] != 200) {
         $values["error"] = $response["DESCRIPTION"];
     }
@@ -2511,7 +2511,7 @@ function hexonet_DeleteNameserver($params)
         "COMMAND" => "DeleteNameserver",
         "NAMESERVER" => $nameserver,
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
     if ($response["CODE"] != 200) {
         $values["error"] = $response["DESCRIPTION"];
     }
@@ -2538,7 +2538,7 @@ function hexonet_IDProtectToggle($params)
         "DOMAIN" => $domain,
         "X-ACCEPT-WHOISTRUSTEE-TAC" => ($params["protectenable"]) ? "1" : "0"
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
     if ($response["CODE"] != 200) {
         $values["error"] = $response["DESCRIPTION"];
     }
@@ -2646,7 +2646,7 @@ function hexonet_RegisterDomain($params)
                     "DOMAIN" => array($domain),
                     "PREMIUMCHANNELS" => "*"
             );
-            $check = Ispapi::call($c, $origparams);
+            $check = Ispapi::call($c, $origparams, 'hexonet');
             if ($check["CODE"] == 200) {
                 $registrar_premium_domain_price = $check["PROPERTY"]["PRICE"][0];
                 $registrar_premium_domain_class = empty($check["PROPERTY"]["CLASS"][0]) ? "AFTERMARKET_PURCHASE_" . $check["PROPERTY"]["PREMIUMCHANNEL"][0] : $check["PROPERTY"]["CLASS"][0];
@@ -2667,7 +2667,7 @@ function hexonet_RegisterDomain($params)
     }
     //#####################################################################
 
-    $response = Ispapi::call($command, $origparams);
+    $response = Ispapi::call($command, $origparams, 'hexonet');
 
     if ($response["CODE"] != 200) {
         $values["error"] = $response["DESCRIPTION"];
@@ -2708,7 +2708,7 @@ function hexonet_TransferDomain($params)
     if ($params["eppcode"]) {
         $command["AUTH"] = $params["eppcode"];
     }
-    $r = Ispapi::call($command, $params);
+    $r = Ispapi::call($command, $params, 'hexonet');
 
     if ($r["CODE"] != 218) {
         return [
@@ -2802,7 +2802,7 @@ function hexonet_TransferDomain($params)
     $qr = Ispapi::call([
         "COMMAND" => "QueryDomainOptions",
         "DOMAIN0" => $domain->getDomain()
-    ], $params);
+    ], $params, 'hexonet');
 
     if ($qr["CODE"] == 200) {
         $period_arry = explode(",", $qr['PROPERTY']['ZONETRANSFERPERIODS'][0]);
@@ -2836,7 +2836,7 @@ function hexonet_TransferDomain($params)
         hexonet_use_additionalfields($params, $command);
         unset($command["X-CA-DISCLOSE"]);//not supported for transfers
     }
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     if ($response["CODE"] != 200) {
         return [
@@ -2880,7 +2880,7 @@ function hexonet_RenewDomain($params)
                 "DOMAIN" => $domain,
                 "PROPERTIES" => "PRICE"
             );
-            $statusDomainResponse = Ispapi::call($statusCommand, $params);
+            $statusDomainResponse = Ispapi::call($statusCommand, $params, 'hexonet');
     
             if ($statusDomainResponse["CODE"] == 200 && !empty($statusDomainResponse['PROPERTY']['SUBCLASS'][0])) {
                 if ($premiumDomainsCost == $statusDomainResponse['PROPERTY']['RENEWALPRICE'][0]) { //check if the renewal price displayed to the customer is equal to the real cost at the registar
@@ -2890,11 +2890,11 @@ function hexonet_RenewDomain($params)
         }
     }
 
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     if ($response["CODE"] == 510) {
         $command["COMMAND"] = "PayDomainRenewal";
-        $response = Ispapi::call($command, $params);
+        $response = Ispapi::call($command, $params, 'hexonet');
     }
 
     if ($response["CODE"] != 200) {
@@ -2930,7 +2930,7 @@ function hexonet_ReleaseDomain($params)
         $command["TARGET"] = $target;
     }
 
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     if ($response["CODE"] != 200) {
         $values["error"] = $response["DESCRIPTION"];
@@ -2957,7 +2957,7 @@ function hexonet_RequestDelete($params)
         "COMMAND" => "DeleteDomain",
         "DOMAIN" => $domain
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     if ($response["CODE"] != 200) {
         $values["error"] = $response["DESCRIPTION"];
@@ -3022,7 +3022,7 @@ function hexonet_TransferSync($params)
                     "COMMAND" => "ModifyDomain",
                     "DOMAIN" => $domain_pc,
                     "NAMESERVER" => $newns["nameservers"]
-                ], $params);
+                ], $params, 'hexonet');
             }
         }
         // WHMCS fallbacks to _Sync method when not returning expirydate
@@ -3072,7 +3072,7 @@ function hexonet_Sync($params)
     $r = Ispapi::call([
         "COMMAND" => "StatusDomain",
         "DOMAIN" => $domain->getDomain()
-    ], $params);
+    ], $params, 'hexonet');
            
     if ($r["CODE"] == 531 || $r["CODE"] == 545) {
         return [
@@ -3132,7 +3132,7 @@ function hexonet_Sync($params)
                     $contacts[$r["OWNERCONTACT"][0]] = Ispapi::call([
                         "COMMAND" => "StatusContact",
                         "CONTACT" => $r["OWNERCONTACT"][0]
-                    ], $params);
+                    ], $params, 'hexonet');
                 }
                 $rc = $contacts[$r["OWNERCONTACT"][0]];
                 if ($rc["CODE"] == 200 && empty($rc["PROPERTY"]["EMAIL"][0])) {
@@ -3180,7 +3180,7 @@ function hexonet_Sync($params)
                             $contacts[$r[$ctype][0]] = Ispapi::call([
                                 "COMMAND" => "StatusContact",
                                 "CONTACT" => $r[$ctype][0]
-                            ], $params);
+                            ], $params, 'hexonet');
                         }
                         $rc = $contacts[$r[$ctype][0]];
                         if ($rc["CODE"] == 200 && empty($rc["PROPERTY"]["EMAIL"][0])) {
@@ -3202,7 +3202,7 @@ function hexonet_Sync($params)
     }
     //check if domain update is necessary
     if (count(array_keys($command)) > 2) {
-        Ispapi::call($command, $params);
+        Ispapi::call($command, $params, 'hexonet');
     }
 
     $values = [];
@@ -3317,7 +3317,7 @@ function hexonet_get_contact_info($contact, &$params)
         "COMMAND" => "StatusContact",
         "CONTACT" => $contact
     );
-    $response = Ispapi::call($command, $params);
+    $response = Ispapi::call($command, $params, 'hexonet');
 
     if (1 || $response["CODE"] == 200) {
         $values["First Name"] = $response["PROPERTY"]["FIRSTNAME"][0];
