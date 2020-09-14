@@ -14,10 +14,10 @@ if (!defined("WHMCS")) {
 
 use Illuminate\Database\Capsule\Manager as DB;
 use WHMCS\Module\Registrar\Ispapi\Ispapi as Ispapi;
-use WHMCS\Module\Registrar\Hexonet\Helper as Helper;
-use WHMCS\Module\Registrar\Hexonet\WebApps as WebApps;
-use WHMCS\Module\Registrar\Hexonet\DomainTransfer as HXDomainTransfer;
-use WHMCS\Module\Registrar\Hexonet\Domain as HXDomain;
+use WHMCS\Module\Registrar\Ispapi\Helper as Helper;
+use WHMCS\Module\Registrar\Ispapi\WebApps as WebApps;
+use WHMCS\Module\Registrar\Ispapi\DomainTransfer as HXDomainTransfer;
+use WHMCS\Module\Registrar\Ispapi\Domain as HXDomain;
 
 /**
  * Check the availability of domains using HEXONET's fast API

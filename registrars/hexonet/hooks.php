@@ -1,7 +1,7 @@
 <?php
 
 use WHMCS\Module\Registrar\Ispapi\Ispapi;
-use WHMCS\Module\Registrar\Hexonet\Helper;
+use WHMCS\Module\Registrar\Ispapi\Helper;
 
 add_hook('ClientAreaHeadOutput', 1, function ($vars) {
     // Auto-Prefill VAT-ID, X-DK-REGISTRANT/ADMIN additional domain field when provided in client data
