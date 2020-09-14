@@ -1,6 +1,6 @@
 <?php
 
-use WHMCS\Module\Registrar\Hexonet\Ispapi;
+use WHMCS\Module\Registrar\Ispapi\Ispapi;
 use WHMCS\Module\Registrar\Hexonet\Helper;
 
 add_hook('ClientAreaHeadOutput', 1, function ($vars) {

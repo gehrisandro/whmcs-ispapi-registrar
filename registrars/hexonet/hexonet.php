@@ -13,7 +13,7 @@ if (!defined("WHMCS")) {
 }
 
 use Illuminate\Database\Capsule\Manager as DB;
-use WHMCS\Module\Registrar\Hexonet\Ispapi as Ispapi;
+use WHMCS\Module\Registrar\Ispapi\Ispapi as Ispapi;
 use WHMCS\Module\Registrar\Hexonet\Helper as Helper;
 use WHMCS\Module\Registrar\Hexonet\WebApps as WebApps;
 use WHMCS\Module\Registrar\Hexonet\DomainTransfer as HXDomainTransfer;
@@ -717,7 +717,7 @@ function hexonet_getConfigArray($params)
 
             if (!$included) {
                 $included = true;
-                $values = WHMCS\Module\Registrar\Hexonet\Ispapi::getStatisticsData($params);
+                $values = WHMCS\Module\Registrar\Ispapi\Ispapi::getStatisticsData($params);
 
                 $command = array(
                         "COMMAND" => "SetEnvironment",
@@ -3246,7 +3246,7 @@ function hexonet_Sync($params)
 function hexonet_getTLDPricing($params)
 {
     // fetch list of tlds offerable by reseller
-    $tlds = WHMCS\Module\Registrar\Hexonet\Ispapi::getTLDs($params);
+    $tlds = WHMCS\Module\Registrar\Ispapi\Ispapi::getTLDs($params);
     if (isset($tlds["error"])) {
         return $tlds;
     }
@@ -3255,13 +3255,13 @@ function hexonet_getTLDPricing($params)
     }
 
     // fetch tld configurations for offerable tlds
-    $cfgs = WHMCS\Module\Registrar\Hexonet\Ispapi::getTLDConfigurations($tlds, $params);
+    $cfgs = WHMCS\Module\Registrar\Ispapi\Ispapi::getTLDConfigurations($tlds, $params);
     if (isset($cfgs["error"])) {
         return $cfgs;
     }
 
     // fetch prices for offerable tlds
-    $prices = WHMCS\Module\Registrar\Hexonet\Ispapi::getTLDPrices(array_flip($tlds), $cfgs);
+    $prices = WHMCS\Module\Registrar\Ispapi\Ispapi::getTLDPrices(array_flip($tlds), $cfgs);
     if (isset($prices["error"])) {
         return $prices;
     }
