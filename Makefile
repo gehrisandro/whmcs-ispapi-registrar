@@ -1,7 +1,7 @@
 VERSION := $(shell node -p "require('./release.json').version")
 REPOID := whmcs-ispapi-registrar
 FOLDER := pkg/$(REPOID)-$(VERSION)
-LIBFOLDER := $(FOLDER)/install/modules/registrars/ispapi/lib
+LIBFOLDER := $(FOLDER)/install/modules/registrars/hexonet/lib
 
 clean:
 	rm -rf $(FOLDER)
@@ -14,7 +14,7 @@ buildsources:
 	rm -rf /tmp/$(REPOID)
 	git clone https://github.com/hexonet/$(REPOID).wiki.git /tmp/$(REPOID)
 	# Copy files (archive contents)
-	cp -a registrars/ispapi $(FOLDER)/install/modules/registrars
+	cp -a registrars/hexonet $(FOLDER)/install/modules/registrars
 	cp README.md HISTORY.md HISTORY.old CONTRIBUTING.md LICENSE /tmp/$(REPOID)/*.md $(FOLDER)/docs
 	# Clean up files
 	rm -rf $(FOLDER)/docs/_*.md $(FOLDER)/docs/Home.md /tmp/$(REPOID) $(LIBFOLDER)/.dependabot $(LIBFOLDER)/Country.php $(LIBFOLDER)/sdk/.dependabot
