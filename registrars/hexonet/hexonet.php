@@ -1491,7 +1491,6 @@ function hexonet_whoisprivacy_ca($params)
  */
 function hexonet_GetRegistrarLock($params)
 {
-    ;
     $values = array();
     if (isset($params["original"])) {
         $params = $params["original"];
