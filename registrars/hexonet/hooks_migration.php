@@ -1,1 +1,0 @@
-/home/ad.ks.de/kschwarz/git/whmcs-migration/hooks.php
