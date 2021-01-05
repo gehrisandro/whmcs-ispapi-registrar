@@ -3198,23 +3198,25 @@ function ispapi_Sync($params)
     /** @var \WHMCS\Domains\Domain $domain */
     $domain = $params["domainObj"];
 
-    $r = Ispapi::call([
-        "COMMAND" => "StatusDomain",
-        "DOMAIN" => $domain->getDomain()
-    ], $params);
-
-    if ($r["CODE"] == 531 || $r["CODE"] == 545) {
+    $r = Ispapi::getStatus($params, $domain->getDomain());
+    if (!$r["success"] && $r["errorcode"] == 531) { // Authorization failed
         return [
             "transferredAway" => true
         ];
     }
-    if ($r["CODE"] != 200) {
+    if (!$r["success"] && $r["errorcode"] == 541) { // Object does not exist
+        $status = HXDomain::getDeletionStatus($params, $domain->getDomain(), $r);
+        return [
+            "transferredAway" => true
+        ];
+    }
+    if (!$r["success"]) {
         return [
             "error" => $r["DESCRIPTION"]
         ];
     }
 
-    $r = $r["PROPERTY"];
+    $r = $r["data"];
 
     $command = [
         "COMMAND" => "ModifyDomain",
