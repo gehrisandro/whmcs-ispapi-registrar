@@ -89,6 +89,19 @@ function doTar() {
     .pipe(dest('./pkg'))
 }
 
+/**
+ * Rebrand for hosttech
+ */
+async function rebrand()
+{
+    try {
+        await exec(`${cfg.rebrandcmd}`)
+    } catch (e) {
+        await Promise.reject(e.message)
+    }
+    await Promise.resolve()
+}
+
 exports.lint = series(
   doLint
 )
@@ -116,6 +129,7 @@ exports.default = series(
 )
 exports.release = series(
   exports.copy,
+  rebrand,
   exports.archives,
   doFullClean
 )

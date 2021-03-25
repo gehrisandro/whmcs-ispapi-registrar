@@ -4,6 +4,7 @@
     "phpcschkcmd": "phpcs -n --colors --standard=PSR12",
     "phpcomptcmd": "phpcs -n --colors --standard=PHPCompatibility --runtime-set testVersion \"$(php -r 'echo PHP_MAJOR_VERSION . \".\" . PHP_MINOR_VERSION;')\"",
     "phpstancmd": "./vendor/bin/phpstan analyse",
+    "rebrandcmd": "find build -type f -print0 | xargs -0 sed -i 's/hexonet/hosttech/g; s/Hexonet/hosttech/g; s/HEXONET/HOSTTECH/g; s/ispapi/hosttech/g; s/Ispapi/Hosttech/g; s/ISPAPI/HOSTTECH/g; s/api.hosttech.net/api.ispapi.net/g' && mv build/modules/registrars/ispapi build/modules/registrars/hosttech && mv build/modules/registrars/hosttech/ispapi.php build/modules/registrars/hosttech/hosttech.php && mv build/modules/registrars/hosttech/lib/Ispapi.php build/modules/registrars/hosttech/lib/Hosttech.php",
     "archiveFileName": "whmcs-ispapi-registrar",
     "archiveBuildPath": "build",
     "filesForArchive": [

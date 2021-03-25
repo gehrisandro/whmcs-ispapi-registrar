@@ -13,6 +13,8 @@ if (!defined("WHMCS")) {
 }
 
 use Illuminate\Database\Capsule\Manager as DB;
+use WHMCS\Domain\Domain;
+use WHMCS\Module\Registrar\Hosttech\HosttechDns as HosttechDns;
 use WHMCS\Module\Registrar\Ispapi\Ispapi as Ispapi;
 use WHMCS\Module\Registrar\Ispapi\Helper as Helper;
 use WHMCS\Module\Registrar\Ispapi\WebApps as WebApps;
@@ -772,7 +774,25 @@ function ispapi_getConfigArray($params)
             "FriendlyName" => "Offer DNSSEC / Secure DNS",
             "Type" => "yesno",
             "Description" => "Display the DNSSEC Management functionality in the Domain Details View."
-        ]
+        ],
+        "DnsUsername" => [
+            "FriendlyName" => "DNS Username",
+            "Type" => "text",
+            "Size" => "20",
+            "Description" => "Enter your HOSTTECH DNS Username"
+        ],
+                "DnsPassword" => [
+            "FriendlyName" => "DNS Password",
+            "Type" => "password",
+            "Size" => "20",
+            "Description" => "Enter your HOSTTECH DNS Password"
+        ],
+                "DnsApiToken" => [
+            "FriendlyName" => "DNS ApiToken",
+            "Type" => "textarea",
+            "Rows" => "5",
+            "Description" => "Or enter your HOSTTECH DNS API Token (in this case you can leave the DNS username and password blank)"
+        ],
     ];
 
     $authOk = Ispapi::checkAuth($params); //keep this line here as it generates the canUse object
@@ -884,6 +904,7 @@ function ispapi_ClientAreaCustomButtonArray($params)
             $params["dnsmanagement"] = $r["result"]["dnsmanagement"];
         }
     }
+    $buttonarray["DNS Records"] = "dnsrecords";
     if ($params["idprotection"]) {
         $buttonarray["WHOIS Privacy"] = "whoisprivacy";
     }
@@ -3665,4 +3686,72 @@ function ispapi_get_utf8_params($params)
         }
     }
     return $params;
+}
+
+/**
+ * Handle the DNS records of a domain
+ *
+ * @param array $params common module parameters
+ *
+ * @return array an array with a template name
+ */
+function hosttech_dnsrecords($params)
+{
+    $errors = [];
+    $success = false;
+
+    $domain = Domain::where('id', $params['domainid'])->where('userid', $_SESSION['uid'])->first();
+
+    if(!empty($_POST['records'])) {
+        $submitted_records = $_POST['records'];
+        $response = HosttechDns::saveZone($domain, $submitted_records);
+        if(!empty($response['errors'])){
+            foreach($response['errors'] as $key => $error){
+                $error_field = explode('.', $key);
+                $errors[$error_field[1]][$error_field[2]] = $error;
+            }
+            $records = $submitted_records;
+        }else{
+            $success = true;
+            $records = $response['data']['records'];
+        }
+    }else{
+        $zoneData = HosttechDns::getZone($domain);
+
+        if(empty($zoneData)){
+            $nsRecords = [];
+
+            $nameserversets = HosttechDns::getProfile()['nameserversets'];
+            if (!empty($nameserversets[0])) {
+                foreach ($nameserversets[0]['servers'] as $nameserver) {
+                    $nsRecords[] = [
+                        'type' => 'NS',
+                        'ownername' => '',
+                        'targetname' => $nameserver,
+                        'ttl' => 10800,
+                    ];
+                }
+            }
+
+            $zoneData = HosttechDns::createZone(
+                $domain,
+                10800,
+                !empty($nameserversets[0]['servers'][0]) ? $nameserversets[0]['servers'][0] : 'ns1.hostserv.eu',
+                false,
+                $nsRecords
+            );
+        }
+
+        $records = $zoneData['records'];
+    }
+
+    return [
+        "templatefile" => "tpl_ca_dns_records",
+        "vars" => [
+            'record_types' => HosttechDns::recordTypes,
+            'records' => collect($records),
+            'errors' => $errors,
+            'success' => $success,
+        ]
+    ];
 }

@@ -142,3 +142,18 @@ add_hook('ClientAreaPageDomainDetails', 1, function ($vars) {
         return $vars;
     }
 });
+
+add_hook('ClientAreaPrimarySidebar', 1, function ($menu) {
+    // Check whether the domains menu exists
+    if(!empty($_GET['domainid'])){
+        $domainid = $_GET['domainid'];
+    }else{
+        $domainid = $_GET['id'];
+    }
+
+    if (!is_null($menu->getChild('Domain Details Management'))) {
+        // Remove unused WHMCS DNS Management
+        $menu->getChild('Domain Details Management')
+            ->removeChild('Manage DNS Host Records');
+    }
+});
