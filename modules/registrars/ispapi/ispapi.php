@@ -904,7 +904,7 @@ function ispapi_ClientAreaCustomButtonArray($params)
             $params["dnsmanagement"] = $r["result"]["dnsmanagement"];
         }
     }
-    $buttonarray["DNS Records"] = "dnsrecords";
+    $buttonarray["DNS Records Management"] = "dnsrecords";
     if ($params["idprotection"]) {
         $buttonarray["WHOIS Privacy"] = "whoisprivacy";
     }
@@ -3702,6 +3702,9 @@ function hosttech_dnsrecords($params)
 
     $domain = Domain::where('id', $params['domainid'])->where('userid', $_SESSION['uid'])->first();
 
+    $zoneData = HosttechDns::getZone($domain);
+    $dnssecStatus = $zoneData['dnssec'] ? HosttechDns::getDnssecStatus($domain) : null;
+
     if(!empty($_POST['records'])) {
         $submitted_records = $_POST['records'];
         $response = HosttechDns::saveZone($domain, $submitted_records);
@@ -3715,9 +3718,21 @@ function hosttech_dnsrecords($params)
             $success = true;
             $records = $response['data']['records'];
         }
-    }else{
-        $zoneData = HosttechDns::getZone($domain);
+    }elseif(!empty($_POST['fix_ds_record'])){
+        $command = array(
+            "COMMAND" => "ModifyDomain",
+            "DOMAIN" => $domain->domain,
+            "SECDNS-DS" => [$_POST['fix_ds_record']],
+        );
 
+        $response = Hosttech::call($command, $params);
+        if ($response["CODE"] == 200) {
+            $success = true;
+            $dnssecStatus = HosttechDns::getDnssecStatus($domain);
+        } else {
+            $success = false;
+        }
+    }else{
         if(empty($zoneData)){
             $nsRecords = [];
 
@@ -3748,8 +3763,12 @@ function hosttech_dnsrecords($params)
     return [
         "templatefile" => "tpl_ca_dns_records",
         "vars" => [
+            'domain_name' => $domain->domain,
             'record_types' => HosttechDns::recordTypes,
             'records' => collect($records),
+            'dnssec' => $zoneData['dnssec'],
+            'dnssec_status' => $dnssecStatus,
+            'ds_records' => $zoneData['ds_records'],
             'errors' => $errors,
             'success' => $success,
         ]
