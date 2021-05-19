@@ -775,23 +775,11 @@ function ispapi_getConfigArray($params)
             "Type" => "yesno",
             "Description" => "Display the DNSSEC Management functionality in the Domain Details View."
         ],
-        "DnsUsername" => [
-            "FriendlyName" => "DNS Username",
-            "Type" => "text",
-            "Size" => "20",
-            "Description" => "Enter your HOSTTECH DNS Username"
-        ],
-                "DnsPassword" => [
-            "FriendlyName" => "DNS Password",
-            "Type" => "password",
-            "Size" => "20",
-            "Description" => "Enter your HOSTTECH DNS Password"
-        ],
-                "DnsApiToken" => [
+        "DnsApiToken" => [
             "FriendlyName" => "DNS ApiToken",
             "Type" => "textarea",
             "Rows" => "5",
-            "Description" => "Or enter your HOSTTECH DNS API Token (in this case you can leave the DNS username and password blank)"
+            "Description" => "Enter your HOSTTECH DNS API Token"
         ],
     ];
 
@@ -833,6 +821,30 @@ HTML
         ];
     }
 
+    $dnsAuthSuccessfull = HosttechDns::getProfile() !== null;
+    
+    if ($dnsAuthSuccessfull === false) {
+        $configarray[" "] = [
+            "Description" => (
+            <<<HTML
+                <div class="alert alert-danger" style="font-size:medium;margin-bottom:0px;">
+                    <h2>Connecting to the DNS API failed.</h2>
+                    <p>Please provide a valid DNS API Token. You can manage your API Tokens in the myhosttech customer center.</p>
+                </div>
+HTML
+            )
+        ];
+    } else {
+        $configarray[" "] = [
+            "Description" => (
+            <<<HTML
+                <div class="alert alert-success" style="font-size:medium;margin-bottom:0px;">
+                    <h2>Connection to the DNS API established.</h2>
+                </div>
+HTML
+            )
+        ];
+    }
 
     return $configarray;
 }
@@ -3699,15 +3711,17 @@ function hosttech_dnsrecords($params)
 {
     $errors = [];
     $success = false;
+    $dnsSecFixSuccess = null;
 
     $domain = Domain::where('id', $params['domainid'])->where('userid', $_SESSION['uid'])->first();
 
     $zoneData = HosttechDns::getZone($domain);
+    $records = $zoneData['records'];
     $dnssecStatus = $zoneData['dnssec'] ? HosttechDns::getDnssecStatus($domain) : null;
 
     if(!empty($_POST['records'])) {
         $submitted_records = $_POST['records'];
-        $response = HosttechDns::saveZone($domain, $submitted_records);
+        $response = HosttechDns::saveZone($domain, $submitted_records, isset($_POST['dnssec']));
         if(!empty($response['errors'])){
             foreach($response['errors'] as $key => $error){
                 $error_field = explode('.', $key);
@@ -3716,7 +3730,9 @@ function hosttech_dnsrecords($params)
             $records = $submitted_records;
         }else{
             $success = true;
-            $records = $response['data']['records'];
+            $zoneData = HosttechDns::getZone($domain);
+            $records = $zoneData['records'];
+            $dnssecStatus = $zoneData['dnssec'] ? HosttechDns::getDnssecStatus($domain) : null;
         }
     }elseif(!empty($_POST['fix_ds_record'])){
         $command = array(
@@ -3727,10 +3743,10 @@ function hosttech_dnsrecords($params)
 
         $response = Hosttech::call($command, $params);
         if ($response["CODE"] == 200) {
-            $success = true;
+            $dnsSecFixSuccess = true;
             $dnssecStatus = HosttechDns::getDnssecStatus($domain);
         } else {
-            $success = false;
+            $dnsSecFixSuccess = false;
         }
     }else{
         if(empty($zoneData)){
@@ -3771,6 +3787,7 @@ function hosttech_dnsrecords($params)
             'ds_records' => $zoneData['ds_records'],
             'errors' => $errors,
             'success' => $success,
+            'dnsSecFixSuccess' => $dnsSecFixSuccess,
         ]
     ];
 }

@@ -14,10 +14,27 @@
 			Your entered data is invalid. Please correct all marked fields.
 		{/if}
 	</div>
+{elseif $dnsSecFixSuccess === true}
+	<div class="alert alert-success">
+		<strong>{$LANG.success}</strong><br>
+		{if $LANG['locale'] eq 'de_DE'}
+			Der DS Record wurde bei der Registry hinterlegt. Bis DNSSec korrekt funktioniert können noch bis zu 6h vergehen.
+		{else}
+			The DS record has been stored in the registry. It can take up to 6 hours until DNSSec works correctly.
+		{/if}
+	</div>
+{elseif $dnsSecFixSuccess === false}
+	<div class="alert alert-danger">
+		<strong>{$LANG.error}</strong><br>
+		{if $LANG['locale'] eq 'de_DE'}
+			Der DS Record konnte nicht automatisch hinterlegt werden. Bitte tragen Sie einen der unten angezeigten DS Records manuell ein.
+		{else}
+			The DS Record could not be stored automatically. Please enter one of the DS Records displayed below manually.
+		{/if}
+	</div>
 {/if}
 
 {assign var=counter value=0}
-
 <form id="dns_records_form" method="post" action="">
 	<div class="panel panel-sidebar">
 		<div class="panel-heading">
@@ -42,7 +59,7 @@
 					<td style="border-top: none">Aktiv</td>
 					<td style="border-top: none">
 						<label style="display: flex; align-items: center;">
-							<input type="checkbox" name="dnssec" id="dnssec" value="1" style="margin-top: 0">
+							<input type="checkbox" name="dnssec" id="dnssec" value="1" {if $dnssec} checked {/if} style="margin-top: 0">
 							<span style="padding-left: 6px;">DNSSec aktivieren</span>
 						</label>
 					</td>
@@ -94,19 +111,15 @@
 						<tr>
 							<td>Status</td>
 							<td>
-								{assign var="translation_key" val="dnssec_status_`$dnssec_status['status_key']`"}
+								{assign var="translation_key" value="dnssec_status_`$dnssec_status['status_key']`"}
 								{if $dnssec_status['status']}
 									<span class="dns_circle on"></span> <strong>{WHMCS\Module\Registrar\Hosttech\HosttechDns::translate($translation_key, $LANG['locale'])}</strong>
 								{else}
 									<span class="dns_circle off"></span> <strong>{WHMCS\Module\Registrar\Hosttech\HosttechDns::translate($translation_key, $LANG['locale'])}</strong>
-									{if isset($dsRecords[1])}
+									{if isset($ds_records[1])}
 										<div>
-											<form id="dns_records_form" method="post" action="">
-												<input type="hidden" name="fix_ds_record"
-													   value="{$dsRecords[1]['key_tag']} {$dsRecords[1]['algorithm']} {$dsRecords[1]['digest_type']} {$dsRecords[1]['digest']}">
-												<input class="btn btn-large btn-primary" type="submit"
-													   value="{WHMCS\Module\Registrar\Hosttech\HosttechDns::translate('dnssec_ds_error_autofix', $LANG['locale'])}">
-											</form>
+											<input id="fix-ds-record-button" class="btn btn-large btn-primary" type="button" style="margin-top: 6px;"
+												   value="{WHMCS\Module\Registrar\Hosttech\HosttechDns::translate('dnssec_ds_error_autofix', $LANG['locale'])}">
 										</div>
 									{/if}
 								{/if}
@@ -123,7 +136,7 @@
 		<div style="margin-bottom: 24px;">
 			<div style="display: flex; align-items: center; justify-content: space-between;">
 				<h4>{$record_type} Records</h4>
-				<a href="#" class="add_record">+ {$record_type} {if $LANG['locale'] eq 'de_DE'} Record hinzufügen {else} Add record {/if}</a>
+				<a href="#" class="add_record">+ {if $LANG['locale'] eq 'de_DE'} {$record_type}  Record hinzufügen {else} Add {$record_type} record {/if}</a>
 			</div>
 			<table class="table table-striped" style="margin-bottom: 0; {if $records->where('type', $record_type)->isEmpty()}display: none{/if}">
 				<thead>
@@ -167,6 +180,11 @@
 	</p>
 </form>
 
+<form id="fix-ds-record-form" method="post" action="">
+	<input type="hidden" name="fix_ds_record"
+		   value="{$ds_records[1]['key_tag']} {$ds_records[1]['algorithm']} {$ds_records[1]['digest_type']} {$ds_records[1]['digest']}">
+</form>
+
 {literal}
 <script type="text/javascript">
 	var record_count = {/literal}{$counter}{literal}
@@ -191,6 +209,9 @@
 				});
 				$('.zone_dnssec_ds_popup_show').on('click', function(){
 					$(this).closest('.zone_dnssec_ds_record').find('.zone_dnssec_ds_overlay').show();
+				});
+				$('#fix-ds-record-button').on('click', function(){
+					$('#fix-ds-record-form').submit();
 				});
 			});
 </script>
@@ -278,3 +299,5 @@
 		}
 	</style>
 {/literal}
+
+

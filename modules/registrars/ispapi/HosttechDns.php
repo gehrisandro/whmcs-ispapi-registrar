@@ -112,7 +112,11 @@ class HosttechDns
             'headers' => $headers,
         ]);
 
-        $response = $http->{$method}('https://api.ns1.hosttech.eu/api' . $url,
+        $baseUrl = ($params["TestMode"] == "on") ?
+            'https://api.dev.ns.hosttech.eu/api' :
+            'https://api.ns1.hosttech.eu/api';
+
+        $response = $http->{$method}($baseUrl . $url,
             [
                 'http_errors' => false,
                 'json' => $data,
@@ -126,10 +130,11 @@ class HosttechDns
         return self::call('get', '/user/v1/zones/' . $domain->domain)['data'];
     }
 
-    public static function saveZone(Domain $domain, $records)
+    public static function saveZone(Domain $domain, $records, $dnssec)
     {
         return self::call('put', '/user/v1/zones/' . $domain->domain, [
-            'records' => $records
+            'records' => $records,
+            'dnssec' => $dnssec,
         ]);
     }
 
